@@ -38,3 +38,9 @@ async def detect_objects(file: UploadFile = File(...)):
     
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.get("/hello")
+def sayHello():
+    return JSONResponse(content={"message" : "hello ali"})
+    
+
