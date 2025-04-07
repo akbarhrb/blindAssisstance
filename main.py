@@ -57,3 +57,9 @@ async def detect(file: UploadFile = File(...)):
 
     results = postprocess(output)
     return {"detections": results}
+
+
+@app.get("/hello")
+def sayHello():
+    return JSONResponse(content={"message" : "hello ali"})
+    
