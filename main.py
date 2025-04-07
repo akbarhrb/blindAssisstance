@@ -1,46 +1,59 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-from ultralytics import YOLO
-import shutil
-import os
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
+from PIL import Image
+import io
+import tflite_runtime.interpreter as tflite
 
 app = FastAPI()
 
-# Load the YOLO model once on startup
-model = YOLO("yolov8n.pt")  # You can change to your trained .pt if needed
+# Allow Flutter requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace with Flutter server IP in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Load the TFLite model
+interpreter = tflite.Interpreter(model_path="yolov8n.tflite")
+interpreter.allocate_tensors()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+# Replace with your actual class list
+CLASS_NAMES = ['person', 'bicycle', 'car', 'hand']  # etc.
+
+def preprocess(image: Image.Image):
+    image = image.resize((640, 640)).convert("RGB")
+    input_data = np.expand_dims(np.array(image, dtype=np.float32) / 255.0, axis=0)
+    return input_data
+
+def postprocess(output, conf_thres=0.3):
+    results = []
+    preds = output[0]
+    for det in preds:
+        x1, y1, x2, y2, conf, cls_id = det
+        if conf < conf_thres:
+            continue
+        results.append({
+            "class_id": int(cls_id),
+            "class_name": CLASS_NAMES[int(cls_id)],
+            "confidence": float(conf),
+            "bbox": [float(x1), float(y1), float(x2), float(y2)]
+        })
+    return results
 
 @app.post("/detect/")
-async def detect_objects(file: UploadFile = File(...)):
-    try:
-        # Save uploaded file temporarily
-        temp_path = f"temp_{file.filename}"
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # Run inference
-        results = model(temp_path)
-        detections = results[0].boxes
-
-        response = []
-        if detections is not None:
-            for box in detections:
-                cls_id = int(box.cls[0])
-                conf = float(box.conf[0])
-                class_name = model.names[cls_id]
-                response.append({
-                    "class": class_name,
-                    "confidence": round(conf, 3)
-                })
-
-        # Clean up the temporary file
-        os.remove(temp_path)
-        return JSONResponse(content={"results": response})
+async def detect(file: UploadFile = File(...)):
+    contents = await file.read()
+    image = Image.open(io.BytesIO(contents))
     
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+    input_tensor = preprocess(image)
+    interpreter.set_tensor(input_details[0]['index'], input_tensor)
+    interpreter.invoke()
+    output = interpreter.get_tensor(output_details[0]['index'])
 
-@app.get("/hello")
-def sayHello():
-    return JSONResponse(content={"message" : "hello ali"})
-    
-
+    results = postprocess(output)
+    return {"detections": results}
