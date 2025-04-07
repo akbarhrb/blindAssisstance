@@ -2,5 +2,5 @@ fastapi
 uvicorn
 pillow
 numpy
-tflite-runtime
+tflite-runtime==2.13.0
 python-multipart
