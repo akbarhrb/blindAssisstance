@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 # Load the TFLite model
-interpreter = tflite.Interpreter(model_path="yolov8n_float32.tflite")
+interpreter = tflite.Interpreter(model_path="yolov8n_float16.tflite")
 interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
