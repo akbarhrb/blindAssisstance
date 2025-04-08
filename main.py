@@ -4,39 +4,41 @@ from fastapi.responses import JSONResponse
 import numpy as np
 from PIL import Image
 import io
-import tensorflow.lite as tflite  # Use tflite_runtime if needed
+import tensorflow as tf  # Use TensorFlow instead of tflite_runtime
 
 app = FastAPI()
 
-# Allow access from Flutter or any frontend
+# CORS for Flutter access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Replace with your Flutter IP or domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load YOLOv5s TFLite model
-interpreter = tflite.Interpreter(model_path="yolov5s.tflite")
+# Load the TFLite model with TensorFlow
+interpreter = tf.lite.Interpreter(model_path="yolov5s.tflite")
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-CLASS_NAMES = [  # COCO 80 classes
-    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train',
-    'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign',
-    'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep',
-    'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella',
-    'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard',
-    'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard',
-    'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork',
-    'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
-    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair',
-    'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv',
-    'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
-    'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+# COCO class names
+CLASS_NAMES = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+    'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+    'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+    'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+    'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+    'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+    'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+    'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+    'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+    'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+    'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
     'scissors', 'teddy bear', 'hair drier', 'toothbrush'
 ]
 
@@ -49,16 +51,16 @@ def preprocess(image: Image.Image):
 def postprocess(predictions, conf_threshold=0.3):
     boxes = []
     for pred in predictions[0]:
-        if pred[4] < conf_threshold:
-            continue
-        x1, y1, x2, y2, conf, cls_id = pred[:6]
-        boxes.append({
-            "class_id": int(cls_id),
-            "class_name": CLASS_NAMES[int(cls_id)],
-            "confidence": round(float(conf), 3),
-            "bbox": [round(float(x1), 2), round(float(y1), 2),
-                     round(float(x2), 2), round(float(y2), 2)]
-        })
+        pred = pred[:6]  # Use only [x1, y1, x2, y2, conf, class_id]
+        x1, y1, x2, y2, conf, cls_id = pred
+        if conf >= conf_threshold:
+            boxes.append({
+                "class_id": int(cls_id),
+                "class_name": CLASS_NAMES[int(cls_id)],
+                "confidence": round(float(conf), 3),
+                "bbox": [round(float(x1), 2), round(float(y1), 2),
+                         round(float(x2), 2), round(float(y2), 2)]
+            })
     return boxes
 
 @app.post("/detect/")
@@ -77,4 +79,4 @@ async def detect(file: UploadFile = File(...)):
 
 @app.get("/hello")
 def hello():
-    return JSONResponse(content={"message": "Hello from YOLOv5s FastAPI!"})
+    return JSONResponse(content={"message": "Hello from YOLO FastAPI!"})
