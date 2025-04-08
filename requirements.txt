@@ -2,5 +2,6 @@ fastapi
 uvicorn
 pillow
 numpy
-tensorflow==2.13.0  # Using TensorFlow with TFLite support
+torch==1.13.1  # or any compatible PyTorch version
+opencv-python
 python-multipart
