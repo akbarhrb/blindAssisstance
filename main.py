@@ -51,6 +51,7 @@ def preprocess(image: Image.Image):
 def postprocess(predictions, conf_threshold=0.3):
     boxes = []
     for pred in predictions[0]:
+        pred = pred[:6]  # Use only [x1, y1, x2, y2, conf, class_id]
         x1, y1, x2, y2, conf, cls_id = pred
         if conf >= conf_threshold:
             boxes.append({
