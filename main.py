@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # Load the YOLOv5 model (PyTorch)
-model = torch.hub.load('ultralytics/yolov5', 'yolov5s')  # Load YOLOv5s model
+model = torch.load("yolov5s.pt", map_location="cpu")
 
 # COCO class names
 CLASS_NAMES = model.names  # Automatically loaded from the model
