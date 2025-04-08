@@ -2,6 +2,6 @@ fastapi
 uvicorn
 pillow
 numpy
-torch==1.13.1  # or any compatible PyTorch version
-opencv-python
+torch>=1.7
+pandas
 python-multipart
